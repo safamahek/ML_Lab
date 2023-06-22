@@ -1,0 +1,51 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style("darkgrid")
+data = pd.read_csv(r"C:\Users\PC\Desktop\titanic.csv")
+data.head(10)
+
+def calculate_prior(df, Y):
+ classes = sorted(list(df[Y].unique()))
+ prior = []
+ for i in classes:
+ prior.append(len(df[df[Y]==i])/len(df))
+ return prior
+def calculate_likelihood_gaussian(df, feat_name, feat_val, Y, label):
+ feat = list(df.columns)
+ df = df[df[Y]==label]
+ mean, std = df[feat_name].mean(), df[feat_name].std()
+ p_x_given_y = (1 / (np.sqrt(2 * np.pi) * std)) * np.exp(-
+((feat_val-mean)**2 / (2 * std**2 )))
+ return p_x_given_y
+def naive_bayes_gaussian(df, X, Y):
+ # get feature names
+ features = list(df.columns)[:-1]
+ # calculate prior
+ prior = calculate_prior(df, Y)
+ Y_pred = []
+ # loop over every data sample
+ for x in X:
+ # calculate likelihood
+ labels = sorted(list(df[Y].unique()))
+ likelihood = [1]*len(labels)
+ for j in range(len(labels)):
+ for i in range(len(features)):
+ likelihood[j] *= calculate_likelihood_gaussian(df,
+features[i], x[i], Y, labels[j])
+
+# calculate posterior probability (numerator only)
+ post_prob = [1]*len(labels)
+ for j in range(len(labels)):
+ post_prob[j] = likelihood[j] * prior[j]
+ Y_pred.append(np.argmax(post_prob))
+ return np.array(Y_pred)
+from sklearn.model_selection import train_test_split
+train, test = train_test_split(data, test_size=.2, random_state=41)
+X_test = test.iloc[:,:-1].values
+Y_test = test.iloc[:,-1].values
+Y_pred = naive_bayes_gaussian(train, X=X_test, Y="Embarked")
+from sklearn.metrics import confusion_matrix, f1_score
+print(confusion_matrix(Y_test, Y_pred))
+print(f1_score(Y_test, Y_pred,average="micro"))
